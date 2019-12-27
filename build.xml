@@ -109,7 +109,7 @@ xmlns:cs="antlib:com.puppycrawl.tools.checkstyle.ant">
 
     <property name="build.dir" value="${basedir}/build" />
     <property name="distribution" value="${basedir}/distribution" />
-    <property name="src_generated.dir" value="${basedir}/zookeeper-jute/target/main/java" />
+    <property name="src_generated.dir" value="${basedir}/zookeeper-jute/src/main/java" />
     <property name="c.src.dir" value="${basedir}/zookeeper-client/zookeeper-client-c" />
     <property name="csrc_generated.dir" value="${c.src.dir}/generated" />
 
