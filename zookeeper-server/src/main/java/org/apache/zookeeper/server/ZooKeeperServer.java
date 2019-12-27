@@ -160,8 +160,8 @@ public class ZooKeeperServer implements SessionExpirer, ServerStats.Provider {
         this.txnLogFactory.setServerStats(this.serverStats);
         this.zkDb = zkDb;
         this.tickTime = tickTime;
-        setMinSessionTimeout(minSessionTimeout);
-        setMaxSessionTimeout(maxSessionTimeout);
+        setMinSessionTimeout(minSessionTimeout); // 最小的sessionTimeout，默认为tickTime * 2
+        setMaxSessionTimeout(maxSessionTimeout); // 最大的sessionTimeout，默认为tickTime * 20
         listener = new ZooKeeperServerListenerImpl(this);
         LOG.info("Created server with tickTime " + tickTime
                 + " minSessionTimeout " + getMinSessionTimeout()

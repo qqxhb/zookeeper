@@ -86,12 +86,14 @@ public class FileTxnSnapLog {
      * snapdir.
      * @param dataDir the transaction directory
      * @param snapDir the snapshot directory
+     *
+     * 完成日志与快照持久化目录的创建，以及是否可写权限验证
      */
     public FileTxnSnapLog(File dataDir, File snapDir) throws IOException {
         LOG.debug("Opening datadir:{} snapDir:{}", dataDir, snapDir);
 
-        this.dataDir = new File(dataDir, version + VERSION);
-        this.snapDir = new File(snapDir, version + VERSION);
+        this.dataDir = new File(dataDir, version + VERSION);  // 日志持久化目录
+        this.snapDir = new File(snapDir, version + VERSION);  // 快照持久化目录
 
         // by default create snap/log dirs, but otherwise complain instead
         // See ZOOKEEPER-1161 for more details
@@ -142,6 +144,7 @@ public class FileTxnSnapLog {
 
         // check content of transaction log and snapshot dirs if they are two different directories
         // See ZOOKEEPER-2967 for more details
+        // 如果日志目录不等于快照目录，则要验证：日志目录中是否存在快照文件，快照目录中是否存在日志文件，如果存在则抛异常
         if(!this.dataDir.getPath().equals(this.snapDir.getPath())){
             checkLogDir();
             checkSnapDir();
