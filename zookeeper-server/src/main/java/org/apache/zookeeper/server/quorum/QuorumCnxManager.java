@@ -135,13 +135,14 @@ public class QuorumCnxManager {
     /*
      * Mapping from Peer to Thread number
      */
+    //SendWorker封装了Socket的发送器，senderWorkerMap用来记录其他服务器id以及对应的SendWorker
     final ConcurrentHashMap<Long, SendWorker> senderWorkerMap;
+    //zkServer需要发送给其他服务器选票信息
     final ConcurrentHashMap<Long, ArrayBlockingQueue<ByteBuffer>> queueSendMap;
+    //每个sid最近一次发送的信息
     final ConcurrentHashMap<Long, ByteBuffer> lastMessageSent;
 
-    /*
-     * Reception queue
-     */
+    // 从其他服务器接收到的投票信息
     public final ArrayBlockingQueue<Message> recvQueue;
     /*
      * Object to synchronize access to recvQueue
@@ -154,9 +155,7 @@ public class QuorumCnxManager {
 
     volatile boolean shutdown = false;
 
-    /*
-     * Listener thread
-     */
+    // 监听线程，负责socket监听
     public final Listener listener;
 
     /*
