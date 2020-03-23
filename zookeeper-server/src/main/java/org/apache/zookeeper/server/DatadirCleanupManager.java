@@ -38,22 +38,23 @@ public class DatadirCleanupManager {
     private static final Logger LOG = LoggerFactory.getLogger(DatadirCleanupManager.class);
 
     /**
-     * Status of the dataDir purge task
+     * 清洗任务状态
      */
     public enum PurgeTaskStatus {
         NOT_STARTED, STARTED, COMPLETED;
     }
 
     private PurgeTaskStatus purgeTaskStatus = PurgeTaskStatus.NOT_STARTED;
-
+    //快照（数据）路径
     private final File snapDir;
-
+    //日志（数据）路径
     private final File dataLogDir;
 
+   //这个参数和下面的参数搭配使用，这个参数指定了需要保留的文件数目。默认是保留3个，也是3.4以后才有的。
     private final int snapRetainCount;
-
+    //3.4.0及之后版本，ZK提供了自动清理事务日志和快照文件的功能，这个参数指定了清理频率，单位是小时，需要配置一个1或更大的整数，默认是0，表示不开启自动清理功能。
     private final int purgeInterval;
-
+    //TImer定时器，根据上面的配置定时执行清理
     private Timer timer;
 
     /**

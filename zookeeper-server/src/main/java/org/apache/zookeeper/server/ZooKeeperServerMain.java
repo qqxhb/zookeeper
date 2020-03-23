@@ -91,18 +91,22 @@ public class ZooKeeperServerMain {
         throws ConfigException, IOException, AdminServerException
     {
         try {
+        	//注册Log4JBean，可以设置zookeeper.jmx.log4j.disable=true，禁用
             ManagedUtil.registerLog4jMBeans();
         } catch (JMException e) {
             LOG.warn("Unable to register log4j JMX control", e);
         }
-
+        //创建并ServerConfig实例并解析配置文件
         ServerConfig config = new ServerConfig();
         if (args.length == 1) {
+        	//如果只有一个参数，则认为是指定的配置文件，会调用QuorumPeerConfig的parse方法，然后在复制到ServerConfig的属性中
             config.parse(args[0]);
         } else {
+        	//否则认为属性直接是参数形式传入clientPortAddress、dataDir/dataLogDir、tickTime、maxClientCnxns
+        	//前面两个端口和路径参数是必传，后两个可不传
             config.parse(args);
         }
-
+        //根据配置文件内容 运行服务
         runFromConfig(config);
     }
 
@@ -117,50 +121,55 @@ public class ZooKeeperServerMain {
         LOG.info("Starting server");
         FileTxnSnapLog txnLog = null;
         try {
-            // Note that this thread isn't going to be doing anything else,
-            // so rather than spawning another thread, we will just call
-            // run() in this thread.
-            // create a file logger url from the command line args
+            // 创建事务及快照日志文件管理实例
             txnLog = new FileTxnSnapLog(config.dataLogDir, config.dataDir);
+            //创建ZooKeeperServer及ServerStats实例
             final ZooKeeperServer zkServer = new ZooKeeperServer(txnLog,
                     config.tickTime, config.minSessionTimeout, config.maxSessionTimeout, null);
+            //给txnLog 设置服务统计实例
             txnLog.setServerStats(zkServer.serverStats());
 
-            // Registers shutdown handler which will be used to know the
-            // server error or shutdown state changes.
+            //注册服务异常或关闭事件处理类，服务启动完成后会调用之后shutdownLatch.await();让主线程一直阻塞，
+            //直到ZooKeeperServerShutdownHandler的handle方法调用 shutdownLatch.countDown();
             final CountDownLatch shutdownLatch = new CountDownLatch(1);
             zkServer.registerServerShutdownHandler(
                     new ZooKeeperServerShutdownHandler(shutdownLatch));
 
-            // Start Admin server
+            // 启动Adminserver，默认是JettyAdminServer，启动之后可以访问服务的状态信息	http://localhost:8080/commands
             adminServer = AdminServerFactory.createAdminServer();
             adminServer.setZooKeeperServer(zkServer);
             adminServer.start();
-
+            
+            /*
+             * ServerCnxnFactory是Zookeeper中的重要组件,负责处理客户端与服务器的连接.主要有两个实现,
+             * 一个是NIOServerCnxnFactory,使用Java原生NIO处理网络IO事件;
+             * 另一个是NettyServerCnxnFactory,使用Netty处理网络IO事件.作为处理客户端连接的组件,其会启动若干线程监听客户端连接端口(即默认的9876端口)
+             */
             boolean needStartZKServer = true;
+            //创建并启动CnxnFactory，负责处理客户端与服务器的连接，默认是NIOServerCnxnFactory，可以通过系统配置zookeeper.serverCnxnFactory指定
             if (config.getClientPortAddress() != null) {
                 cnxnFactory = ServerCnxnFactory.createFactory();
                 cnxnFactory.configure(config.getClientPortAddress(), config.getMaxClientCnxns(), false);
                 cnxnFactory.startup(zkServer);
-                // zkServer has been started. So we don't need to start it again in secureCnxnFactory.
+                // 启动CnxnFactory是自动了ZKServer则不需要再secureCnxnFactory中再启动了
                 needStartZKServer = false;
             }
+          //创建并启动secureCnxnFactory，默认是NIOServerCnxnFactory，可以通过系统配置zookeeper.serverCnxnFactory指定
             if (config.getSecureClientPortAddress() != null) {
                 secureCnxnFactory = ServerCnxnFactory.createFactory();
                 secureCnxnFactory.configure(config.getSecureClientPortAddress(), config.getMaxClientCnxns(), true);
                 secureCnxnFactory.startup(zkServer, needStartZKServer);
             }
-
+            //创建并启动ContainerManager
             containerManager = new ContainerManager(zkServer.getZKDatabase(), zkServer.firstProcessor,
                     Integer.getInteger("znode.container.checkIntervalMs", (int) TimeUnit.MINUTES.toMillis(1)),
                     Integer.getInteger("znode.container.maxPerMinute", 10000)
             );
             containerManager.start();
 
-            // Watch status of ZooKeeper server. It will do a graceful shutdown
-            // if the server is not running or hits an internal error.
+            //主线程阻塞，等待shutdownHandler的handel方法被调用，结束阻塞
             shutdownLatch.await();
-
+            //执行shutdown逻辑，关闭containerManager、cnxnFactory、adminServer等
             shutdown();
 
             if (cnxnFactory != null) {
@@ -169,6 +178,7 @@ public class ZooKeeperServerMain {
             if (secureCnxnFactory != null) {
                 secureCnxnFactory.join();
             }
+            // 关闭zkserver
             if (zkServer.canShutdown()) {
                 zkServer.shutdown(true);
             }

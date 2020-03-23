@@ -651,31 +651,40 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
             data = createRequest.getData();
             ttl = -1;
         }
+        //构建校验请求
         CreateMode createMode = CreateMode.fromFlag(flags);
+        //校验创建请求
         validateCreateRequest(path, createMode, request, ttl);
+        //获取父节点路径
         String parentPath = validatePathForCreate(path, request.sessionId);
-
+        //解析ACL
         List<ACL> listACL = fixupACL(path, request.authInfo, acl);
+        //获取父节点信息
         ChangeRecord parentRecord = getRecordForPath(parentPath);
-
+        //校验ACL
         checkACL(zks, parentRecord.acl, ZooDefs.Perms.CREATE, request.authInfo);
         int parentCVersion = parentRecord.stat.getCversion();
+        //如果是顺序节点，则需要重新定义路径
         if (createMode.isSequential()) {
             path = path + String.format(Locale.ENGLISH, "%010d", parentCVersion);
         }
+        //节点路径校验
         validatePath(path, request.sessionId);
         try {
+        	//判断是否已经存在该路路径节点
             if (getRecordForPath(path) != null) {
                 throw new KeeperException.NodeExistsException(path);
             }
         } catch (KeeperException.NoNodeException e) {
             // ignore this one
         }
+        //临时节点校验
         boolean ephemeralParent = EphemeralType.get(parentRecord.stat.getEphemeralOwner()) == EphemeralType.NORMAL;
         if (ephemeralParent) {
             throw new KeeperException.NoChildrenForEphemeralsException(path);
         }
         int newCversion = parentRecord.stat.getCversion()+1;
+        //根据创建类型生成不同的Txn事务
         if (type == OpCode.createContainer) {
             request.setTxn(new CreateContainerTxn(path, data, listACL, newCversion));
         } else if (type == OpCode.createTTL) {
@@ -688,9 +697,11 @@ public class PrepRequestProcessor extends ZooKeeperCriticalThread implements
         if (createMode.isEphemeral()) {
             s.setEphemeralOwner(request.sessionId);
         }
+        //更新父节点和子节点相关的信息
         parentRecord = parentRecord.duplicate(request.getHdr().getZxid());
         parentRecord.childCount++;
         parentRecord.stat.setCversion(newCversion);
+        //添加修改记录到outstandingChanges队列
         addChangeRecord(parentRecord);
         addChangeRecord(new ChangeRecord(request.getHdr().getZxid(), path, s, 0, listACL));
     }

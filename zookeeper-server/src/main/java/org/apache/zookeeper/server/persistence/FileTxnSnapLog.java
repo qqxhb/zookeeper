@@ -47,13 +47,13 @@ import org.slf4j.LoggerFactory;
  * classes
  */
 public class FileTxnSnapLog {
-    //the direcotry containing the
-    //the transaction logs
+    //事务日志路径
     private final File dataDir;
-    //the directory containing the
-    //the snapshot directory
+    //快照数据路径
     private final File snapDir;
+    //负责处理快照日志
     private TxnLog txnLog;
+    //负责处理事务日志
     private SnapShot snapLog;
     private final boolean trustEmptySnapshot;
     public final static int VERSION = 2;

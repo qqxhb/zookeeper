@@ -137,7 +137,7 @@ public class QuorumPeerConfig {
                 .warnForRelativePath()
                 .failForNonExistingPath()
                 .build()).create(path);
-                
+             //将指定 的配置文件加载到 Properties
             Properties cfg = new Properties();
             FileInputStream in = new FileInputStream(configFile);
             try {
@@ -146,7 +146,7 @@ public class QuorumPeerConfig {
             } finally {
                 in.close();
             }
-            
+            //将Properties转换成QuorumPeerConfig
             parseProperties(cfg);
         } catch (IOException e) {
             throw new ConfigException("Error processing " + path, e);
